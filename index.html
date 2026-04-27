@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>高级感电子书模型</title>
+
+    <style>
+
+        body {
+
+            background-color: #000;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            height: 100vh;
+
+            margin: 0;
+
+            overflow: hidden;
+
+            /* 防止快速点击导致的蓝色选中效果 */
+
+            -webkit-tap-highlight-color: transparent;
+
+        }
+
+
+
+        .book-container {
+
+            position: relative;
+
+            width: 463px;
+
+            height: 770px;
+
+            /* 更加丝滑的容器平移 */
+
+            transition: transform 1.2s cubic-bezier(0.28, 0.11, 0.32, 1);
+
+            perspective: 2500px; /* 增加透视深度 */
+
+        }
+
+
+
+        .book-container.open {
+
+            transform: translateX(231.5px);
+
+        }
+
+
+
+        .page {
+
+            position: absolute;
+
+            width: 100%;
+
+            height: 100%;
+
+            transform-origin: left;
+
+            transform-style: preserve-3d;
+
+            /* 模拟纸张略带阻尼的翻转感 */
+
+            transition: transform 1.2s cubic-bezier(0.28, 0.11, 0.32, 1);
+
+            cursor: pointer;
+
+        }
+
+
+
+        .front, .back {
+
+            position: absolute;
+
+            width: 100%;
+
+            height: 100%;
+
+            backface-visibility: hidden;
+
+            background-color: #1a1a1a;
+
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.2); /* 基础页面阴影 */
+
+            overflow: hidden;
+
+        }
+
+
+
+        .back {
+
+            transform: rotateY(180deg);
+
+        }
+
+
+
+        img {
+
+            width: 100%;
+
+            height: 100%;
+
+            object-fit: cover;
+
+            display: block;
+
+            /* 稍微降低图片亮度，增加质感 */
+
+            filter: brightness(0.9);
+
+        }
+
+
+
+        .flipped {
+
+            transform: rotateY(-180deg);
+
+        }
+
+
+
+        /* --- 高级感细节：动态光效 --- */
+
+
+
+        /* 模拟页面翻转时的书脊阴影 */
+
+        .front::after, .back::after {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0;
+
+            width: 40px;
+
+            height: 100%;
+
+            pointer-events: none;
+
+            transition: opacity 1.2s;
+
+        }
+
+
+
+        /* 正面右侧（靠近书脊处）的暗影 */
+
+        .front::after {
+
+            left: 0;
+
+            background: linear-gradient(to right, rgba(0,0,0,0.3), transparent);
+
+            opacity: 1;
+
+        }
+
+
+
+        /* 翻过去后，背面左侧（靠近书脊处）的深色褶皱影 */
+
+        .back::after {
+
+            left: 0;
+
+            background: linear-gradient(to right, rgba(0,0,0,0.6), transparent);
+
+        }
+
+
+
+        /* 翻转过程中的高光掠过效果（可选） */
+
+        .page:not(.flipped) .front::before {
+
+            content: '';
+
+            position: absolute;
+
+            top: 0; left: 0; width: 200%; height: 100%;
+
+            background: linear-gradient(110deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 80%);
+
+            transform: translateX(-100%);
+
+            transition: transform 1.2s;
+
+            z-index: 2;
+
+        }
+
+        .page.flipped .front::before {
+
+            transform: translateX(100%);
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="book-container" id="bookContainer">
+    <!-- 页面由JavaScript动态生成 -->
+</div>
+
+<script>
+
+    const container = document.getElementById('bookContainer');
+
+    const TOTAL_PAGES = 100;  // 总页数（100页，200张图片）
+    const IMAGE_FORMAT = '.png';  // 图片格式
+
+
+
+    function flipPage(pageElement, isCover) {
+
+        const isFlippingToBack = !pageElement.classList.contains('flipped');
+
+        
+
+        if (!isFlippingToBack) {
+
+            // 向回翻
+
+            pageElement.classList.remove('flipped');
+
+            if (isCover) container.classList.remove('open');
+
+            setTimeout(() => { 
+
+                pageElement.style.zIndex = pageElement.dataset.originalZ; 
+
+            }, 600); // 延迟回归层级，避免穿插
+
+        } else {
+
+            // 向前翻
+
+            pageElement.classList.add('flipped');
+
+            if (isCover) container.classList.add('open');
+
+            pageElement.style.zIndex = 100;
+
+        }
+
+    }
+
+
+
+    // 动态生成100页
+    function generatePages() {
+        for (let i = 0; i < TOTAL_PAGES; i++) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'page';
+            pageDiv.onclick = function() {
+                flipPage(this, i === 0);  // 第一页是封面
+            };
+
+            // 正面（左页）- 图片编号为 i*2+1
+            const frontDiv = document.createElement('div');
+            frontDiv.className = 'front';
+            const frontPageNum = i * 2 + 1;
+            frontDiv.innerHTML = `<img src="./${frontPageNum}${IMAGE_FORMAT}" alt="第${frontPageNum}页">`;
+            
+            // 背面（右页）- 图片编号为 i*2+2
+            const backDiv = document.createElement('div');
+            backDiv.className = 'back';
+            const backPageNum = i * 2 + 2;
+            backDiv.innerHTML = `<img src="./${backPageNum}${IMAGE_FORMAT}" alt="第${backPageNum}页">`;
+
+            pageDiv.appendChild(frontDiv);
+            pageDiv.appendChild(backDiv);
+            container.appendChild(pageDiv);
+        }
+
+        // 设置页面层级
+        const pages = document.querySelectorAll('.page');
+        pages.forEach((page, index) => {
+            const z = pages.length - index;
+            page.style.zIndex = z;
+            page.dataset.originalZ = z;
+        });
+    }
+
+    // 初始化页面
+    generatePages();
+
+</script>
+
+</body>
+
+</html>
